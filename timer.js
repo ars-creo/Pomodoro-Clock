@@ -1,64 +1,99 @@
 const MINIMUM_CLOCK_VALUE = 0;
 const MAXIMUM_CLOCK_VALUE = 60;
+const ONE_MINUTE_IN_MILISECONDS = 60000;
 
-function minusFunc() {
-    const $item = document.getElementById(this.id);
-    const $sibling = $item.nextSibling.nextSibling;
-    let currentTime = Number($sibling.textContent);
-    if (currentTime === MINIMUM_CLOCK_VALUE) {
-        currentTime = MINIMUM_CLOCK_VALUE;
-    } else {
-        currentTime--;
-    }
-    $sibling.textContent = String(currentTime);
-}
-
-function plusFunc() {
-    const $item = document.getElementById(this.id);
-    const $sibling = $item.previousSibling.previousSibling;
-    let currentTime = Number($sibling.textContent);
-    if (currentTime === MAXIMUM_CLOCK_VALUE) {
-        currentTime = MAXIMUM_CLOCK_VALUE;
-    } else {
-        currentTime++;
-    }
-    $sibling.textContent = String(currentTime);
-}
-
-function timeCounter(arg1, arg2) {
-    const sessionTime = arg1;
-    const breakTime = arg2;
-    const interval = setInterval(function () {
-        arg1 -= 1000;
-        const getDate = new Date();
-        getDate.setTime(arg1);
-        const timer = document.getElementById('timer');
-        timer.textContent = ('0' + getDate.getMinutes()).slice(-2) + ':' + ('0' + getDate.getSeconds()).slice(-2);
-
-        if (arg1 === 0) {
-            const snd = new Audio('FreesoundOrgSynthesizedHornByDarkadders.mp3');
-            snd.play();
-            const whatIsCounted = document.getElementById('ele');
-            whatIsCounted.textContent = whatIsCounted.textContent == 'session' ? whatIsCounted.textContent = 'break' : whatIsCounted.textContent = 'session';
-            clearInterval(interval);
-            timeCounter(breakTime, sessionTime);
+class Timer {
+    decreaseElementNumber($element) {
+        let number = Number($element.textContent);
+        if (Number.isNaN(number)) {
+            throw new TypeError(('element is not a number'));
         }
-    }, 1000);
+        if (number <= MINIMUM_CLOCK_VALUE) {
+            number = MINIMUM_CLOCK_VALUE;
+        } else {
+            number--;
+        }
+        $element.textContent = String(number);
+    }
 
-    // ------ reset button
-    const resetBttn = document.getElementById('resetBttn')
-        .addEventListener('click', resetTimer);
+    increaseElementNumber($element) {
+        let number = Number($element.textContent);
+        if (number < MAXIMUM_CLOCK_VALUE) {
+            number++;
+        } else {
+            number = MAXIMUM_CLOCK_VALUE;
+        }
+        $element.textContent = String(number);
+    }
 
-    function resetTimer() {
-        window.clearInterval(interval);
+    timeCounter(timeToCount, timeToCountNextRound) {
+        let sessionTime = timeToCount;
+
+        this.interval = setInterval( () => {
+            sessionTime -= 1000;
+
+            const date = new Date(sessionTime);
+            this.updateTimerControl(date);
+
+            if (sessionTime === MINIMUM_CLOCK_VALUE) {
+                const snd = new Audio('FreesoundOrgSynthesizedHornByDarkadders.mp3');
+                snd.play();
+                this.toggleCountLabel();
+                clearInterval(this.interval);
+                this.startTimer(timeToCountNextRound, timeToCount);
+            }
+        }, 1000);
+
+        this.setupResetButton();
+    }
+
+
+    updateTimerControl(date) {
+        const $timer = document.getElementById('timer');
+        $timer.textContent = this.formatTime(date);
+    }
+
+    toggleCountLabel() {
+        const $item = document.getElementById('ele');
+        $item.textContent = ($item.textContent === 'session')
+            ? 'break'
+            : 'session';
+    }
+
+    formatTime(date) {
+        const minutes = String(date.getMinutes());
+        const seconds = String(date.getSeconds());
+        const TWO_DIGITS = 2;
+        const PREFIX = 2;
+        const minutesWithZero = minutes.padStart(TWO_DIGITS, PREFIX);
+        const secondsWithZero = seconds.padStart(TWO_DIGITS, PREFIX);
+        return `${minutesWithZero}:${secondsWithZero}`;
+    }
+
+    setupResetButton() {
+        const $resetButton = document.getElementById('resetBttn');
+        $resetButton.addEventListener('click', () => {
+            this.resetTimer();
+        });
+    }
+
+    resetTimer() {
+        window.clearInterval(this.interval);
         document.getElementById('ele').textContent = 'click';
         document.getElementById('timer').textContent = 'to start';
     }
+
+    startTimer($breakTime, $sessionTime) {
+        const breakTime = Number($breakTime.textContent);
+        const sessionTime = Number($sessionTime.textContent);
+
+        const userBreakTime = breakTime * ONE_MINUTE_IN_MILISECONDS;
+        const userSessionTime = sessionTime * ONE_MINUTE_IN_MILISECONDS;
+
+        this.timeCounter(userSessionTime, userBreakTime);
+    }
 }
 
-function timerOn() {
-    const userBreakTime = Number(document.getElementById('breakTime').innerText) * 60000;
-    const userSessionTime = Number(document.getElementById('sessionTime').innerText) * 60000;
-    document.getElementById('ele').textContent = 'session';
-    timeCounter(userSessionTime, userBreakTime);
+if (typeof module === 'object' && module.exports){
+    module.exports = Timer;
 }
